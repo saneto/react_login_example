@@ -36,3 +36,13 @@
     transform: rotate(360deg);
   }
 }
+
+.container {
+  flex: 1;
+  background-color: '#fff';
+}
+.statusStyle{
+  padding: 15;
+  flex-Direction: 'row';
+  justify-Content: 'space-around';
+}
