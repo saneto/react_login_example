@@ -5,6 +5,7 @@ import {withAuthentification} from './withAuthentification';
 const INITIAL_STATE = {
   passwordOne: '',
   passwordTwo: '',
+  oldpassword: '',
   error: null,
 };
 
@@ -35,34 +36,29 @@ class PasswordChangeForm extends Component {
 	};
 
 	render() {
-		const { passwordOne, passwordTwo, error } = this.state;
+		const {oldpassword, passwordOne, passwordTwo, error } = this.state;
 
-		const isInvalid =
-		passwordOne !== passwordTwo || passwordOne === '';
+
 
 		return (
-		<form onSubmit={this.onSubmit}>
-			<input
-				name="passwordOne"
-				value={passwordOne}
-				onChange={this.onChange}
-				type="password"
-				placeholder="New Password"
-			/>
-			<input
-				name="passwordTwo"
-				value={passwordTwo}
-				onChange={this.onChange}
-				type="password"
-				placeholder="Confirm New Password"
-			/>
-			<button className="open_button_tweet" disabled={isInvalid} type="submit">
-				Reset My Password
-			</button>
+			<div>
+				<h3 className="title">Change Your Password</h3>
+				<form onSubmit={this.onSubmit}  className="grey-box">
+					<span className="text">
+						There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration inble. If you are of going.
+					</span>
+					<input value={oldpassword} onChange={this.onChange} type="password" className="form-control" id="old-password" name="old-password" placeholder="Old password"/>
+					<input value={passwordOne} onChange={this.onChange} type="password" className="form-control" id="passwordOne" name="passwordOne" placeholder="New password"/>
+					<input value={passwordTwo} onChange={this.onChange} type="password" className="form-control" id="passwordTwo" name="passwordTwo" placeholder="Confirm new password"/>
+						
+					<button className="btn btn-defaul" type="submit">
+						Reset My Password
+					</button>
 
-			{error && <p>{error.message}</p>}
-			
-		</form>
+					{error && <p>{error.message}</p>}
+					
+				</form>
+			</div>
 		);
 	}
 }
