@@ -1,25 +1,33 @@
 import React, { Component } from 'react';
 import { Link, withRouter } from 'react-router-dom';
 import { compose } from 'recompose';
+import { PasswordForgetLink } from '../../Password/PasswordForget';
 
 import { withBackaccessContext } from '../../BackEnd';
 import * as ROUTES from '../../../const/routes';
+import {store} from "react-notifications-component";
 
 const SignUpPage = () => (
-  <div>
-    <h1>Register</h1>
-    <SignUpForm />
-  </div>
+    <section id="user-profile">    
+        <SignUpForm />
+    </section>
 );
 
 const INITIAL_STATE = {
-  username: '',
-  name: '',
-  email: '',
-  passwordOne: '',
-  passwordTwo: '',
-  isAdmin: false,
-  error: null,
+    username: '',
+    name: '',
+    email: '',
+    passwordOne: '',
+    passwordTwo: '',
+    isAdmin: false,
+    formErrors: {username: '', name: '', email: '', passwordOne: '', passwordTwo: ''},
+    usernameValid: false,
+    nameValid: false,
+    emailValid: false,
+    passwordOneValid: false,
+    passwordTwoValid: false,
+    formValid: false,
+    error: null
 };
 
 const ERROR_CODE_ACCOUNT_EXISTS = 'le compte existe deja';
@@ -34,38 +42,29 @@ class SignUpFormBase extends Component {
     }
 
      onSubmit = event => {
-         console.log(this.state)
         const { username,name, email, passwordOne } = this.state;
-        this.props.firebase
-            .doCreateUserWithEmailAndPassword(email, passwordOne)
-            .then(authUser => {
-                let uid=authUser.user.uid;
-                let src = "https://firebasestorage.googleapis.com/v0/b/superp2-8a0d2.appspot.com/o/images%2Fdefault_photo%2F250px-Ouisticram-Pt.png?alt=media&token=c48c3326-e329-4faa-838c-40454802b632";
-               this.setState({uid : uid})
-                return this.props.firebase.user(authUser.user.uid).set({
-                    username,
-                    name,
-                    email,
-                    uid,
-                    src,
-                });
-            })
-            .then(() => {
-                let notifId = this.props.firebase.notifications().push().key;
-                this.props.firebase.user(this.state.uid).update({
-                    notifId: notifId
-                });
-                return this.props.firebase.doSendEmailVerification();
-            })
+        this.props.backaccess
+            .doCreateUserWithEmailAndPassword({firstname: username, lastname: name, email : email, password : passwordOne})
             .then(() => {
                 this.setState({ ...INITIAL_STATE });
                 this.props.history.push(ROUTES.ACCOUNT);
+                store.addNotification({
+                    title: 'Signup success',
+                    message: 'Welcome aboard',
+                    type: 'default',                         // 'default', 'success', 'info', 'warning'
+                    container: 'bottom-right',                // where to position the notifications
+                    animationIn: ["animated", "fadeIn"],     // animate.css classes that's applied
+                    animationOut: ["animated", "fadeOut"],   // animate.css classes that's applied
+                    dismiss: {
+                        duration: 3000
+                    }
+                })
+                console.log("ok")
             })
             .catch(error => {
                 if (error.code === ERROR_CODE_ACCOUNT_EXISTS) {
                 error.message = ERROR_MSG_ACCOUNT_EXISTS;
                 }
-
                 this.setState({ error });
             });
 
@@ -73,11 +72,60 @@ class SignUpFormBase extends Component {
   };
 
   onChange = event => {
-    this.setState({ [event.target.name]: event.target.value });
+      const name = event.target.name;
+      const value = event.target.value;
+      this.setState({ [event.target.name]: event.target.value },
+          () => { this.validateField(name, value) });
   };
 
+    validateField(fieldName, value) {
+        let fieldValidationErrors = this.state.formErrors;
+        let usernameValid = this.state.usernameValid;
+        let nameValid = this.state.nameValid;
+        let emailValid = this.state.emailValid;
+        let passwordOneValid = this.state.passwordOneValid;
+        let passwordTwoValid = this.state.passwordTwoValid;
+
+
+        switch(fieldName) {
+            case 'username':
+                usernameValid = value.length >= 0;
+                fieldValidationErrors.username = usernameValid ? '': ' must be superior to 6 characters';
+                break;
+            case 'name':
+                nameValid = value.length >= 0;
+                fieldValidationErrors.name = nameValid ? '': ' must be superior to 6 characters';
+                break;
+            case 'email':
+                emailValid = value.match(/^([\w.%+-]+)@([\w-]+\.)+([\w]{2,})$/i);
+                fieldValidationErrors.email = emailValid ? '' : ' is invalid';
+                break;
+            case 'passwordOne':
+                passwordOneValid = value.length >= 6;
+                fieldValidationErrors.passwordOne = passwordOneValid ? '': ' must be superior to 6 characters';
+                break;
+            case 'passwordTwo':
+                passwordTwoValid = value.length >= 6;
+                fieldValidationErrors.passwordTwo = passwordTwoValid ? '': ' must be superior to 6 characters';
+                break;
+            default:
+                break;
+        }
+        this.setState({formErrors: fieldValidationErrors,
+            usernameValid: usernameValid,
+            nameValid: nameValid,
+            emailValid: emailValid,
+            passwordOneValid: passwordOneValid,
+            passwordTwoValid: passwordTwoValid
+        }, this.validateForm);
+    }
+
+    validateForm() {
+        this.setState({formValid: this.state.usernameValid && this.state.nameValid && this.state.emailValid && this.state.passwordOneValid && this.state.passwordTwoValid});
+    }
+
   onChangeCheckbox = event => {
-    this.setState({ [event.target.name]: event.target.checked });
+        this.setState({ [event.target.name]: event.target.checked });
   };
 
     render() {
@@ -90,42 +138,70 @@ class SignUpFormBase extends Component {
             name,
         } = this.state;
 
-        const   isInvalid =
-                passwordOne !== passwordTwo ||
-                passwordOne === '' ||
-                email === '' ||
-                name === '' ||
-                username === '';
 
         return (
-            <form onSubmit={this.onSubmit}>
-                <div >
-                    <label htmlFor="username"><b>User Name</b>
-                    <input name="username"  value={username}  onChange={this.onChange} type="text"  placeholder="Full Name"   />
-                    </label>
-
-                    <label htmlFor="name"><b>Name</b>
-                    <input name="name"  value={name}  onChange={this.onChange} type="text"  placeholder=" Name"   />
-                    </label>
-
-                    <label htmlFor="email"><b>Email Address</b>
-                    <input name="email" value={email} onChange={this.onChange} type="text" placeholder="Email Address"  />
-                    </label>
-
-                    <label htmlFor="passwordOne"><b>Password</b>
-                    <input name="passwordOne" value={passwordOne} onChange={this.onChange} type="password" placeholder="Password"  />
-                    </label>
-
-                    <label htmlFor="passwordTwo"><b>Confirm Password</b>
-                    <input name="passwordTwo"  value={passwordTwo} onChange={this.onChange}  type="password" placeholder="Confirm Password"  />
-                    </label>
-
-                    <button  className="registerbtn" disabled={isInvalid} type="submit">
-                        Sign Up
-                    </button>
-                    {error && <p>{error.message}</p>}
+            <div class="container">
+                <div class="row">
+                    <div class="col-sm-9 col-md-7">
+                        <div class="section-title line-style no-margin">
+                            <h3 class="title">Create Account</h3>
+                        </div>
+                        <form onSubmit={this.onSubmit}>
+                            <ul class="profile create">
+                                <li>
+                                    <span>User Name</span>
+                                    <input  placeholder="Full Name"  value={username} onChange={this.onChange} type="text" class="form-control" name="username" id="username" />
+                                </li>
+                                { !this.state.usernameValid ? (
+                                    <small className="color-red">{ "cant be blank" }</small>
+                                ) : (
+                                    ""
+                                )}
+                                <li>
+                                    <span>Name</span>
+                                    <input value={name}  onChange={this.onChange} type="text"  placeholder=" Name" class="form-control" name="name" id="name" />
+                                </li>
+                                { !this.state.nameValid ? (
+                                    <small className="color-red">{ "cant be blank" }</small>
+                                ) : (
+                                    ""
+                                )}
+                                <li>
+                                    <span>Email Address</span>
+                                    <input type="text"  value={email}  onChange={this.onChange} placeholder="Email Address"  class="form-control" name="email" id="email" />
+                                </li>
+                                { !this.state.emailValid ? (
+                                    <small className="color-red">{ "invalid email syntax" }</small>
+                                ) : (
+                                    ""
+                                )}
+                                <li>
+                                    <span>Password</span>
+                                    <input type="password" class="form-control" value={passwordOne} onChange={this.onChange} name="passwordOne" id="passwordOne" />
+                                </li>
+                                { !this.state.passwordOneValid ? (
+                                    <small className="color-red">{ "password must have more than 6 character" }</small>
+                                ) : (
+                                    ""
+                                )}
+                                <li>
+                                    <span>Pepeat Password</span>
+                                    <input type="password" class="form-control" value={passwordTwo} onChange={this.onChange} name="passwordTwo" id="passwordTwo" />
+                                </li>
+                                { !this.state.passwordTwoValid ? (
+                                    <small className="color-red">{ "password must have more than 6 character" }</small>
+                                ) : (
+                                    ""
+                                )}
+                            </ul>
+                            <div class="text-right">
+                                <button class="btn btn-default signin-button" type="submit" disabled={!this.state.formValid}><i class="fa fa-sign-in"></i> Sign up</button>
+                                {error && <p>{error.message}</p>}
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </form>
+            </div>
         );
     }
 }
